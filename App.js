@@ -1,14 +1,22 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, Modal, TextInput, Button } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, Modal, TextInput, Button, ScrollView } from 'react-native';
 import { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import AntDesign from '@expo/vector-icons/AntDesign';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// --- NUESTRO COMPONENTE DE MODAL (IMPORTADO) ---
+import ModalNuevaTarea from './components/ModalNuevaTarea';
 
 
 // Componente para representar cada tarea
-const TaskItem = ({ text, completed }) => (
+const TaskItem = ({ text, completed }) => (// funcion flecha que recibe dos parámetros text y completed
   <View style={styles.taskCard}>
     <View style={[styles.checkbox, completed && styles.checkboxCompleted]}>
-      {completed && <Ionicons name="checkmark" size={16} color="white" />}
+      {completed && <Ionicons name="checkmark" size={96} color="white" />}
     </View>
     <Text style={[styles.taskText, completed && styles.taskTextDone]}>
       {text}
@@ -24,30 +32,29 @@ export default function App() {
     return hoy.toLocaleDateString('en-US', opciones);
   };
 
-//Estads para almacenar tareas
-const [tareas, setTareas] = useState([
-  { id: '1', texto: 'Tarea 1', completada: false },
-  { id: '2', texto: 'Tarea 2', completada: true },
-  { id: '3', texto: 'Tarea 3', completada: false },
-]);
+  //Estads para almacenar tareas
+  const [tareas, setTareas] = useState([]);
 
-// Estado para el modal
-const [estaVisible, setEstaVisible] = useState(false);
-const [nuevoTexto, setNuevoTexto] = useState('');
+  // Estado para el modal
+  const [estaVisible, setEstaVisible] = useState(false);
+  const [nuevoTexto, setNuevoTexto] = useState('');
 
-// Función para añadir (El show en acción)
-const addTask = (text) => {
-  const newTask = { id: Date.now().toString(), texto: text, completada: false };
-  setTareas([...tareas, newTask]); // "Copia las que había y añade la nueva"
-};
+  // Estado para la barra de navegación inferior
+  const [tabActivo, setTabActivo] = useState('Chats');
 
-// Modal
-const guardarTarea = () => {
+  // Función para añadir (El show en acción)
+  const addTask = (text) => {
+    const newTask = { id: Date.now().toString(), texto: text, completada: false };
+    setTareas([...tareas, newTask]); // "Copia las que había y añade la nueva"
+  };
+
+  // Modal
+  const guardarTarea = () => {
     if (nuevoTexto.trim().length > 0) {
-      const nuevaTarea = { 
-        id: Date.now().toString(), 
-        texto: nuevoTexto, 
-        completada: false 
+      const nuevaTarea = {
+        id: Date.now().toString(),
+        texto: nuevoTexto,
+        completada: false
       };
       setTareas([...tareas, nuevaTarea]);
       setNuevoTexto(''); // Limpia el buscador
@@ -55,35 +62,90 @@ const guardarTarea = () => {
     }
   };
 
-const deleteTask = (id) => {
-  setTareas(tareas.filter((task) => task.id !== id));
-};
+  const deleteTask = (id) => {
+    setTareas(tareas.filter((task) => task.id !== id));
+  };
 
-const toggleTask = (id) => {
-  const nuevasTareas = tareas.map(item => {
-    if (item.id === id) {
-      return { ...item, completada: !item.completada };
-    }
-    return item;
-  });
-  setTareas(nuevasTareas);
-};
+  const toggleTask = (id) => {
+    const nuevasTareas = tareas.map(item => {
+      if (item.id === id) {
+        return { ...item, completada: !item.completada };
+      }
+      return item;
+    });
+    setTareas(nuevasTareas);
+  };
+
+  // --- PASO 1: CARGAR DATOS AL INICIAR ---
+  useEffect(() => {
+    const cargarTareas = async () => {
+      try {
+        const tareasGuardadas = await AsyncStorage.getItem('mis_tareas');
+        if (tareasGuardadas !== null) {
+          setTareas(JSON.parse(tareasGuardadas));
+        }
+      } catch (e) {
+        console.error("Error cargando tareas", e);
+      }
+    };
+    cargarTareas();
+  }, []);
+
+  // --- PASO 2: GUARDAR CADA VEZ QUE CAMBIEN ---
+  useEffect(() => {
+    const guardarTareas = async () => {
+      try {
+        await AsyncStorage.setItem('mis_tareas', JSON.stringify(tareas));
+      } catch (e) {
+        console.error("Error guardando tareas", e);
+      }
+    };
+    guardarTareas();
+  }, [tareas]); // Se ejecuta cada vez que 'tareas' cambie
+
+
 
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
 
       <View style={styles.cabecera}>
-      <View>
-        <Text style={styles.titulo}>To-Do List</Text>
-        <Text style={styles.fecha}>{fecha()}</Text>
-      </View>
-        <TouchableOpacity 
-        style={styles.addtask}
-        onPress={() => setEstaVisible(true)} // <--- Llama a la función
+        <View>
+          <Text style={styles.titulo}>To-Do List</Text>
+          <Text style={styles.fecha}>{fecha()}</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.addtask}
+          onPress={() => setEstaVisible(true)} // <--- Llama a la función
         >
           <Text style={styles.addtasktext}>+</Text>
         </TouchableOpacity>
+
+      </View>
+
+      <View style={styles.cabecera2}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.listaCategorias}
+        >
+          {/* Aquí puedes mapear tus listas luego, esto es solo diseño visual por ahora */}
+          <TouchableOpacity style={[styles.tabBoton, styles.tabBotonActivo]}>
+            <Text style={[styles.tabTexto, styles.tabTextoActivo]}>Todas</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.tabBoton}>
+            <Text style={styles.tabTexto}>Trabajo</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.tabBoton}>
+            <Text style={styles.tabTexto}>Personal</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.tabBoton}>
+            <Text style={styles.tabTexto}>Ventas</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.tabBoton} onPress={() => setEstaVisible(true)}>
+            <Text style={styles.tabTexto}>+ New List</Text>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
 
       <View style={styles.contenido}>
@@ -92,52 +154,75 @@ const toggleTask = (id) => {
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={styles.contenedorTarea}>
-            <TouchableOpacity 
-              style={{ flex: 1 }} 
-              onPress={() => toggleTask(item.id)}
-            >
-              <TaskItem text={item.texto} completed={item.completada} />
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1 }}
+                onPress={() => toggleTask(item.id)}
+              >
+                <TaskItem text={item.texto} completed={item.completada} />
+              </TouchableOpacity>
 
-            <TouchableOpacity 
-              onPress={() => deleteTask(item.id)}
-              style={styles.botonBorrar}
-            >
-              <Ionicons name="trash-outline" size={22} color="#835656" />
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity
+                onPress={() => deleteTask(item.id)}
+                style={styles.botonBorrar}
+              >
+                <Ionicons name="trash-outline" size={22} color="#835656" />
+              </TouchableOpacity>
+            </View>
           )}
-          contentContainerStyle={{ padding: 20 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: 100 }} // Espacio extra abajo para que no tape la barra
         />
       </View>
 
-      <Modal visible={estaVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalFondo}>
-          <View style={styles.modalContenido}>
-            <TextInput
-              style={styles.input}
-              placeholder="Nueva tarea"
-              value={nuevoTexto}
-              onChangeText={setNuevoTexto}
-            />
-            <View style={styles.botonesFila}>
-              <TouchableOpacity 
-                style={[styles.boton, { backgroundColor: '#835656' }]} 
-                onPress={() => setEstaVisible(false)}
-              >
-                <Text style={styles.botonTexto}>Cancelar</Text>
-              </TouchableOpacity>
+      {/* --- BARRA DE NAVEGACIÓN INFERIOR (ESTILO TELEGRAM) --- */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity
+          style={[styles.navItem, tabActivo === 'Chats' && styles.navItemActivo]}
+          onPress={() => setTabActivo('Chats')}
+        >
+          <MaterialIcons name="checklist" size={24} color={tabActivo === 'Chats' ? '#00796B' : '#888'} />
+          <Text style={[styles.navText, tabActivo === 'Chats' && styles.navTextActivo]}>To-Do</Text>
+        </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={[styles.boton, { backgroundColor: '#00796B' }]} 
-                onPress={guardarTarea}
-              >
-                <Text style={styles.botonTexto}>Añadir</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        <TouchableOpacity
+          style={[styles.navItem, tabActivo === 'Contacts' && styles.navItemActivo]}
+          onPress={() => setTabActivo('Contacts')}
+        >
+          <AntDesign name="border-inner" size={24} color={tabActivo === 'Contacts' ? '#00796B' : '#888'} />
+          <Text style={[styles.navText, tabActivo === 'Contacts' && styles.navTextActivo]}>Eisenhower</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.navItem, tabActivo === 'Settings' && styles.navItemActivo]}
+          onPress={() => setTabActivo('Settings')}
+        >
+          <MaterialCommunityIcons name="alarm-check" size={24} color={tabActivo === 'Settings' ? '#00796B' : '#888'} />
+          <Text style={[styles.navText, tabActivo === 'Settings' && styles.navTextActivo]}>Pomodoro </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.navItem, tabActivo === 'Profile' && styles.navItemActivo]}
+          onPress={() => setTabActivo('Profile')}
+        >
+          <FontAwesome5 name="calendar-alt" size={24} color={tabActivo === 'Profile' ? '#00796B' : '#888'} />
+          <Text style={[styles.navText, tabActivo === 'Profile' && styles.navTextActivo]}>Calendar</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.navItem, tabActivo === 'SettingsTab' && styles.navItemActivo]}
+          onPress={() => setTabActivo('SettingsTab')}
+        >
+          <Ionicons name="settings" size={24} color={tabActivo === 'SettingsTab' ? '#00796B' : '#888'} />
+          <Text style={[styles.navText, tabActivo === 'SettingsTab' && styles.navTextActivo]}>Settings</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ModalNuevaTarea
+        visible={estaVisible}
+        valorActual={nuevoTexto}
+        onChangeText={setNuevoTexto}
+        onClose={() => setEstaVisible(false)}
+        onAdd={guardarTarea}
+      />
     </View>
   );
 }
@@ -148,12 +233,39 @@ const styles = StyleSheet.create({
     backgroundColor: '#E0F7FA',
   },
   cabecera: {
-    height: '25%',
-    justifyContent: 'center',
+    paddingTop: 60, // Espacio para la barra de estado superior
+    paddingBottom: 20, // Espacio inferior natural en lugar de un alto fijo
     paddingHorizontal: 25,
     flexDirection: 'row', // Alinea los elementos en fila
     alignItems: 'center', // Centra los elementos verticalmente
     justifyContent: 'space-between', // Espacio entre los elementos
+  },
+  cabecera2: {
+    paddingVertical: 10, // Un poco de espacio arriba y abajo
+    paddingLeft: 0,
+  },
+  listaCategorias: {
+    paddingRight: 25, // Para que haya un margen al hacer scroll hasta el final
+    paddingLeft: 25,
+    alignItems: 'center',
+  },
+  tabBoton: {
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: 20,
+    backgroundColor: '#B2DFDB', // Color inactivo
+    marginRight: 10, // Espacio entre cada botón
+  },
+  tabBotonActivo: {
+    backgroundColor: '#00796B', // Color activo
+  },
+  tabTexto: {
+    fontSize: 14,
+    color: '#00796B',
+    fontWeight: 'bold',
+  },
+  tabTextoActivo: {
+    color: '#FFFFFF',
   },
   contenido: {
     flex: 1,
@@ -180,13 +292,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 5,
-    
+
   },
   addtasktext: {
     fontSize: 30,
     color: '#00796B',
-  },  
-  cards:{
+  },
+  cards: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 15,
@@ -234,46 +346,9 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
     color: '#AAA',
   },
-  modalFondo: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)', // Fondo oscuro transparente
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContenido: {
-    backgroundColor: 'white',
-    width: '85%',
-    padding: 25,
-    borderRadius: 20,
-    elevation: 10,
-  },
-  modalTitulo: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#333',
-  },
-  input: {
-    borderBottomWidth: 2,
-    borderColor: '#00796B',
-    padding: 10,
-    marginBottom: 25,
-    fontSize: 16,
-  },
-  botonesFila: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  boton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    minWidth: 100,
-    alignItems: 'center',
-  },
-  botonTexto: {
-    color: 'white',
-    fontWeight: 'bold',
+  taskTextDone: {
+    textDecorationLine: 'line-through',
+    color: '#AAA',
   },
   contenedorTarea: {
     flexDirection: 'row',
@@ -286,5 +361,44 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
+  // --- ESTILOS DE BARRA DE NAVEGACIÓN ---
+  bottomNav: {
+    position: 'absolute',
+    bottom: 25, // Flota un poco por encima del borde inferior
+    left: 10, // Ampliado para dejar más espacio interno
+    right: 10, // Ampliado
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 5, // Reducido el borde interno general
+    borderRadius: 35, // Curvatura pronunciada tipo Telegram
+    elevation: 10, // Sombra en Android
+    shadowColor: '#000', // Sombra en iOS
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+  },
+  navItem: {
+    flex: 1, // Fuerza a que cada uno de los 5 botones mida exactamente lo mismo
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 2, // Reducido para que no empujen hacia los lados
+    borderRadius: 25,
+  },
+  navItemActivo: {
+    backgroundColor: '#E0F2F1', // Píldora de color de fondo al estar activo
+  },
+  navText: {
+    fontSize: 10, // Reducido para que quepa una palabra larga como "Eisenhower"
+    color: '#888',
+    marginTop: 4,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  navTextActivo: {
+    color: '#00796B',
+    fontWeight: 'bold',
+  },
 });
