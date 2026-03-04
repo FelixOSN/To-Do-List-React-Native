@@ -8,8 +8,9 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// --- NUESTRO COMPONENTE DE MODAL (IMPORTADO) ---
+// --- NUESTRO COMPONENTE DE MODAL (IMPORTADO) --- 1HLyVSaPwxgHF7xu
 import ModalNuevaTarea from './components/ModalNuevaTarea';
+import ModalNuevaLista from './components/ModalNuevaLista';
 
 
 // Componente para representar cada tarea
@@ -34,32 +35,44 @@ export default function App() {
 
   //Estads para almacenar tareas
   const [tareas, setTareas] = useState([]);
+  const [listas, setListas] = useState([]);
+
+  // Lista que el usuario tiene seleccionada (por defecto 'Todas')
+  const [listaSeleccionada, setListaSeleccionada] = useState('Todas');
 
   // Estado para el modal
-  const [estaVisible, setEstaVisible] = useState(false);
+  const [estaVisible, setEstaVisible] = useState("");
   const [nuevoTexto, setNuevoTexto] = useState('');
 
   // Estado para la barra de navegación inferior
   const [tabActivo, setTabActivo] = useState('Chats');
 
-  // Función para añadir (El show en acción)
-  const addTask = (text) => {
-    const newTask = { id: Date.now().toString(), texto: text, completada: false };
-    setTareas([...tareas, newTask]); // "Copia las que había y añade la nueva"
+  // Modal
+  const guardarTarea = (datosExtra = null) => {
+    // 1. Si viene desde ModalNuevaTarea (datosExtra es un objeto con titulo, descripcion, etc.)
+    const nuevaTarea = {
+      id: Date.now().toString(),
+      texto: datosExtra.titulo, // Guardamos el titulo como 'texto' para no romper tu FlatList
+      descripcion: datosExtra.descripcion,
+      deadline: datosExtra.deadline,
+      prioridad: datosExtra.priority,
+      categoria: datosExtra.tag,
+      completada: false
+    };
+    setTareas([...tareas, nuevaTarea]);//
+    setEstaVisible(""); // Cierra la ventana
   };
 
-  // Modal
-  const guardarTarea = () => {
-    if (nuevoTexto.trim().length > 0) {
-      const nuevaTarea = {
-        id: Date.now().toString(),
-        texto: nuevoTexto,
-        completada: false
-      };
-      setTareas([...tareas, nuevaTarea]);
-      setNuevoTexto(''); // Limpia el buscador
-      setEstaVisible(false); // Cierra la ventana
-    }
+  const guardarLista = (info = null) => {
+    // 1. Si viene desde ModalNuevaLista (datosExtra es un objeto con titulo, descripcion, etc.)
+    const nuevaLista = {
+      id: Date.now().toString(),
+      titulo: info.titulo, // Guardamos el titulo como 'texto' para no romper tu FlatList
+      descripcion: info.descripcion,
+      color: info.color,
+    };
+    setListas([...listas, nuevaLista]);//
+    setEstaVisible(""); // Cierra la ventana
   };
 
   const deleteTask = (id) => {
@@ -116,7 +129,7 @@ export default function App() {
         </View>
         <TouchableOpacity
           style={styles.addtask}
-          onPress={() => setEstaVisible(true)} // <--- Llama a la función
+          onPress={() => setEstaVisible("tarea")} // <--- Llama a la función
         >
           <Text style={styles.addtasktext}>+</Text>
         </TouchableOpacity>
@@ -129,20 +142,34 @@ export default function App() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.listaCategorias}
         >
-          {/* Aquí puedes mapear tus listas luego, esto es solo diseño visual por ahora */}
-          <TouchableOpacity style={[styles.tabBoton, styles.tabBotonActivo]}>
-            <Text style={[styles.tabTexto, styles.tabTextoActivo]}>Todas</Text>
+          <TouchableOpacity
+            style={[styles.tabBoton, listaSeleccionada === 'Todas' && styles.tabBotonActivo]}
+            onPress={() => setListaSeleccionada('Todas')}
+          >
+            <Text style={[styles.tabTexto, listaSeleccionada === 'Todas' && styles.tabTextoActivo]}>Todas</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.tabBoton}>
-            <Text style={styles.tabTexto}>Trabajo</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.tabBoton}>
-            <Text style={styles.tabTexto}>Personal</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.tabBoton}>
-            <Text style={styles.tabTexto}>Ventas</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.tabBoton} onPress={() => setEstaVisible(true)}>
+
+          {/* Mapeando el array de listas */}
+          {listas.map((lista) => (
+            <TouchableOpacity
+              key={lista.id}
+              style={[
+                styles.tabBoton,
+                listaSeleccionada === lista.id && styles.tabBotonActivo,
+                { borderColor: lista.color, borderWidth: listaSeleccionada === lista.id ? 0 : 1 }
+              ]}
+              onPress={() => setListaSeleccionada(lista.id)}
+            >
+              <Text style={[
+                styles.tabTexto,
+                listaSeleccionada === lista.id && styles.tabTextoActivo,
+                listaSeleccionada !== lista.id && { color: lista.color }
+              ]}>
+                {lista.titulo}
+              </Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity style={styles.tabBoton} onPress={() => setEstaVisible("lista")}>
             <Text style={styles.tabTexto}>+ New List</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -217,11 +244,15 @@ export default function App() {
       </View>
 
       <ModalNuevaTarea
-        visible={estaVisible}
-        valorActual={nuevoTexto}
-        onChangeText={setNuevoTexto}
-        onClose={() => setEstaVisible(false)}
+        visible={estaVisible === "tarea"}
+        onClose={() => setEstaVisible("")}
         onAdd={guardarTarea}
+      />
+
+      <ModalNuevaLista
+        visible={estaVisible === "lista"}
+        onClose={() => setEstaVisible("")}
+        onAdd={guardarLista}
       />
     </View>
   );
